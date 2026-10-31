@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PayFlow · UPI prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F7; --surface:#FFFFFF; --surface2:#F4F6FB; --ink:#142038; --muted:#56627E; --line:#D5DBE9;
+  --brand:#3A3FD6; --on-brand:#FFFFFF;
+  --ok:#0B7A4F; --ok-bg:#DDF4EA; --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#B42D2D; --bad-bg:#FBE0E0; --info:#3B4A72; --info-bg:#E3E8F5;
+  --ring:#0E1527;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1223; --surface:#151D33; --surface2:#1C2640; --ink:#E6EBF8; --muted:#9FAAC8; --line:#2B3658;
+    --brand:#8A90FF; --on-brand:#0C1223;
+    --ok:#4BD6A0; --ok-bg:#12382C; --warn:#F2B84B; --warn-bg:#40300F; --bad:#FF8A8A; --bad-bg:#40181B; --info:#AEBBE3; --info-bg:#222D4D;
+    --ring:#05080F; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1223; --surface:#151D33; --surface2:#1C2640; --ink:#E6EBF8; --muted:#9FAAC8; --line:#2B3658;
+  --brand:#8A90FF; --on-brand:#0C1223;
+  --ok:#4BD6A0; --ok-bg:#12382C; --warn:#F2B84B; --warn-bg:#40300F; --bad:#FF8A8A; --bad-bg:#40181B; --info:#AEBBE3; --info-bg:#222D4D;
+  --ring:#05080F; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.45 'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.mut{color:var(--muted)}
+
+/* header */
+.top{display:flex;align-items:center;gap:14px;padding:14px 20px;max-width:1520px;margin:0 auto;flex-wrap:wrap}
+.mark{width:34px;height:34px;border-radius:10px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-weight:600;font-size:20px}
+.top h1{font-size:18px;margin:0;font-weight:600}
+.top .note{color:var(--muted);font-size:13px;flex:1;min-width:220px}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:7px 12px}
+.ghost:hover{background:var(--surface2)}
+
+/* layout */
+.grid{display:grid;grid-template-columns:392px minmax(0,1fr);gap:20px;padding:0 20px 24px;max-width:1520px;margin:0 auto;align-items:start}
+.phone-col{position:sticky;top:12px}
+.insp{display:grid;gap:16px;min-width:0}
+.split{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(270px,1fr);gap:16px;align-items:start}
+.side{display:grid;gap:16px}
+@media (max-width:1240px){.split{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}.phone-col{position:static}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card h2{font-size:15px;margin:0 0 10px;font-weight:600}
+
+/* phone */
+.phone{position:relative;width:360px;max-width:100%;height:730px;margin:0 auto;border-radius:40px;background:var(--surface);
+  box-shadow:0 0 0 10px var(--ring),0 0 0 11px var(--line),0 24px 48px -16px rgba(10,16,40,.45);overflow:hidden}
+.sbar{height:36px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:12px;font-weight:600}
+.sbar .off{color:var(--bad)}
+.screen{position:absolute;inset:36px 0 0 0;display:none;flex-direction:column;padding:14px 20px 20px;overflow:auto}
+.screen.on{display:flex}
+.logo{width:54px;height:54px;border-radius:16px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-size:30px;font-weight:600;margin:18px 0 10px}
+.screen h1{font-size:26px;margin:0 0 4px;font-weight:600}
+.sub{margin:0 0 18px;color:var(--muted)}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:12px}
+input,select{display:block;width:100%;margin-top:5px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);font-size:15px}
+.btn{width:100%;border:0;border-radius:14px;padding:14px;font-weight:600}
+.btn.primary{background:var(--brand);color:var(--on-brand)}
+.btn.primary:disabled{opacity:.5;cursor:not-allowed}
+.btn.plain{background:var(--surface2);border:1px solid var(--line);margin-top:10px}
+.fine{font-size:12px;color:var(--muted);margin:10px 0 0}
+.link{background:none;border:0;color:var(--brand);padding:8px 0;font-size:13px;text-decoration:underline;align-self:center}
+.err{color:var(--bad);font-size:13px;min-height:20px;margin:2px 0 8px}
+.hrow{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.hrow h1{font-size:20px;margin:0}
+.chipv{font-size:12px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.bal{background:var(--brand);color:var(--on-brand);border-radius:18px;padding:18px;margin:16px 0 14px}
+.bal small{opacity:.85}
+.bal b{display:block;font-size:30px;font-weight:600;margin-top:2px}
+.screen h3{font-size:14px;margin:18px 0 8px;font-weight:600}
+#hist{list-style:none;margin:0;padding:0}
+#hist li{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+#hist .empty{display:block;color:var(--muted);font-size:13px;border:0}
+.av{width:36px;height:36px;border-radius:12px;background:var(--info-bg);color:var(--info);display:grid;place-items:center;font-weight:600}
+.who b{display:block;font-size:14px;word-break:break-all}
+.who small{color:var(--muted);font-size:12px}
+.amt{text-align:right}
+.amt b{display:block;font-size:14px}
+.pill{display:inline-block;font:600 11px/1 'IBM Plex Sans',sans-serif;padding:4px 8px;border-radius:999px;margin-top:3px}
+.s-INITIATED{background:var(--info-bg);color:var(--info)}
+.s-PENDING{background:var(--warn-bg);color:var(--warn)}
+.s-SUCCESS{background:var(--ok-bg);color:var(--ok)}
+.s-FAILED{background:var(--bad-bg);color:var(--bad)}
+.back{background:none;border:0;font-size:14px;color:var(--muted);align-self:flex-start;padding:4px 0 10px}
+.amountin{font-size:30px;font-weight:600}
+.pinwrap{text-align:center}
+.pinwrap p{margin:6px 0}
+.dots{display:flex;gap:14px;justify-content:center;margin:20px 0}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--muted)}
+.dots i.f{background:var(--ink);border-color:var(--ink)}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:auto}
+.keys button{height:54px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);font-size:20px;font-weight:500}
+.keys button:active{background:var(--line)}
+.res{align-items:center;text-align:center}
+.ico{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;margin:26px 0 14px}
+.ico svg{width:42px;height:42px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.ico.INITIATED{background:var(--info-bg);color:var(--info)}
+.ico.PENDING{background:var(--warn-bg);color:var(--warn)}
+.ico.SUCCESS{background:var(--ok-bg);color:var(--ok)}
+.ico.FAILED{background:var(--bad-bg);color:var(--bad)}
+.spin{width:40px;height:40px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--info);animation:sp 0.9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.res h1{font-size:22px}
+.res .sub{max-width:280px}
+.det{width:100%;text-align:left;background:var(--surface2);border-radius:14px;padding:6px 14px;margin:6px 0 14px;font-size:13px}
+.det div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+.det div:first-child{border-top:0}
+.det span{color:var(--muted)}
+.det b{font-weight:500;word-break:break-all;text-align:right}
+.toast{position:absolute;left:14px;right:14px;top:42px;background:var(--ring);color:#fff;border-radius:14px;padding:12px 14px;font-size:13px;transform:translateY(-130%);transition:transform .3s;z-index:5;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.toast.on{transform:none}
+.offline{background:var(--bad-bg);color:var(--bad);font-size:12px;text-align:center;padding:6px;margin:-14px -20px 12px;display:none}
+.offline.on{display:block}
+
+/* topology */
+#topo{width:100%;height:auto;display:block}
+.lk{stroke:var(--line);stroke-width:3}
+.lk.down{stroke:var(--bad);stroke-dasharray:6 5}
+.node rect{fill:var(--surface2);stroke:var(--line);stroke-width:1.5;transition:stroke .2s}
+.node.on rect{stroke:var(--brand);stroke-width:3.5}
+.node text{fill:var(--ink);font:600 14px 'IBM Plex Sans',sans-serif;text-anchor:middle}
+.node .sb{fill:var(--muted);font:400 12px 'IBM Plex Sans',sans-serif}
+#pkt circle{fill:var(--brand)}
+#pkt text{fill:var(--ink);font:600 13px 'IBM Plex Sans',sans-serif;text-anchor:middle;paint-order:stroke;stroke:var(--surface);stroke-width:5px;stroke-linejoin:round}
+#cross text{fill:var(--bad);font:700 26px sans-serif;text-anchor:middle}
+#badge rect{fill:var(--bad-bg);stroke:var(--bad)}
+#badge text{fill:var(--bad);font:600 12px 'IBM Plex Sans',sans-serif;text-anchor:middle}
+
+/* log */
+.lhead{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.lhead h2{margin:0}
+.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:6px 11px;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--on-brand)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);margin:0}
+.chk input{width:auto;margin:0}
+#next{background:var(--brand);color:var(--on-brand);border:0;border-radius:10px;padding:7px 14px;font-weight:600}
+#next:disabled{opacity:.35;cursor:not-allowed}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;font-size:12px;color:var(--muted);align-items:center}
+.logbox{max-height:min(58vh,560px);min-height:260px;overflow:auto;border-top:1px solid var(--line)}
+#log{list-style:none;margin:0;padding:0}
+.row{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:10px;padding:10px 4px 10px 8px;border-bottom:1px solid var(--line);border-left:4px solid transparent}
+.row.good{border-left-color:var(--ok)}
+.row.bad{border-left-color:var(--bad)}
+.row .t{font-weight:500}
+.row time{font:400 12px 'IBM Plex Mono',ui-monospace,monospace;color:var(--muted)}
+.row pre{margin:5px 0 0;font:400 12.5px/1.5 'IBM Plex Mono',ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;color:var(--muted)}
+.chip{font:600 11px/1 'IBM Plex Sans',sans-serif;padding:5px 0;border-radius:6px;color:#fff;background:var(--lc,#555);text-align:center;height:max-content;display:inline-block;min-width:54px}
+.legend .chip{min-width:0;padding:5px 8px}
+.c-app{--lc:#3A3FD6}.c-dns{--lc:#2A6FB8}.c-tls{--lc:#7A35C9}.c-tcp{--lc:#0B7A8F}
+.c-ip{--lc:#1F7A3D}.c-link{--lc:#8A5A12}.c-upi{--lc:#B3365F}.c-sec{--lc:#B42D2D}
+.sep,.empty{padding:12px 8px;color:var(--muted);font-size:13px}
+.sep{font-weight:600;color:var(--ink);background:var(--surface2);border-radius:8px;margin:8px 0}
+
+/* side cards */
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-weight:600;font-size:15px;padding:0;margin-bottom:8px}
+.sc{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:start;padding:9px 8px;border-radius:10px;cursor:pointer;margin:0;color:var(--ink)}
+.sc:hover{background:var(--surface2)}
+.sc:has(input:checked){background:var(--info-bg)}
+.sc input{width:auto;margin:3px 0 0}
+.sc b{font-weight:600;font-size:14px;display:block}
+.sc span{font-size:12.5px;color:var(--muted);display:block}
+.sc em{font-style:normal;font-size:12px;color:var(--brand)}
+.hint{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-weight:500;color:var(--muted);padding:4px 6px 4px 0}
+td{padding:6px 6px 6px 0;border-top:1px solid var(--line);word-break:break-all}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.kv b{font-weight:600}
+.kv.first{border-top:0}
+.flash{animation:fl 1s}
+@keyframes fl{0%{background:var(--warn-bg)}100%{background:transparent}}
+.sub2{font-size:13px;font-weight:600;margin:14px 0 4px}
+@media (prefers-reduced-motion:reduce){.flash,.spin{animation:none}.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="mark" aria-hidden="true">₹</div>
+  <h1>PayFlow</h1>
+  <div class="note">Prototype. The phone app runs a simulated UPI payment, and the inspector shows every packet and step behind it. Nothing here touches a real network or real money.</div>
+  <button class="ghost" id="reset">Reset demo</button>
+</header>
+
+<main class="grid">
+
+  <!-- PHONE -->
+  <section class="phone-col" aria-label="PayFlow phone app">
+    <div class="phone">
+      <div class="sbar"><span id="clock">9:41</span><span id="net">5G</span></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <div class="screen on" id="s-reg">
+        <div class="logo" aria-hidden="true">₹</div>
+        <h1>PayFlow</h1>
+        <p class="sub">Send money with a VPA. Works with any UPI app.</p>
+        <label>Full name<input id="rName" value="Arpit Kumar Jena" autocomplete="off"></label>
+        <label>Mobile number<input id="rMobile" value="98200 12345" inputmode="numeric" autocomplete="off"></label>
+        <label>Bank
+          <select id="rBank">
+            <option value="sbi">State Bank of India</option>
+            <option value="hdfcbank">HDFC Bank</option>
+            <option value="icici">ICICI Bank</option>
+            <option value="axisbank">Axis Bank</option>
+          </select>
+        </label>
+        <div class="err" id="rErr" aria-live="polite"></div>
+        <button class="btn primary" id="rBtn">Register and link VPA</button>
+        <p class="fine">We confirm this phone's SIM by SMS (device binding).</p>
+        <button class="link" id="skipReg">Skip with a demo account</button>
+      </div>
+
+      <div class="screen" id="s-home">
+        <div class="hrow"><h1>Hi, <span id="hName"></span></h1><span class="chipv" id="hVpa"></span></div>
+        <div class="bal"><small>Account balance</small><b id="hBal"></b></div>
+        <button class="btn primary" id="goSend">Send money</button>
+        <h3>Recent payments</h3>
+        <ul id="hist"></ul>
+      </div>
+
+      <div class="screen" id="s-send">
+        <button class="back" id="sBack">‹ Back</button>
+        <h1>Send money</h1>
+        <p class="sub">Pay to any VPA, for example name@bank.</p>
+        <label>Pay to (VPA)<input id="sTo" value="naitik@hdfcbank" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+        <label>Amount (₹)<input id="sAmt" class="amountin" type="number" min="1" max="100000" step="1" value="500" inputmode="numeric"></label>
+        <label>Remark (optional)<input id="sRm" value="Project lunch" maxlength="40" autocomplete="off"></label>
+        <div class="err" id="sErr" aria-live="polite"></div>
+        <button class="btn primary" id="sGo">Continue</button>
+      </div>
+
+      <div class="screen" id="s-pin">
+        <button class="back" id="pBack">‹ Back</button>
+        <div class="pinwrap">
+          <h1 style="font-size:22px">Enter UPI PIN</h1>
+          <p class="mut" id="pFor"></p>
+          <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <p class="fine">Demo PIN is 1234. Any other PIN is declined by the bank.</p>
+        </div>
+        <div class="keys" id="keys"></div>
+      </div>
+
+      <div class="screen res" id="s-res">
+        <div class="offline" id="offline">No internet connection</div>
+        <div class="ico INITIATED" id="rIco"></div>
+        <h1 id="rTitle" aria-live="polite"></h1>
+        <p class="sub" id="rSub"></p>
+        <div class="det" id="rDet"></div>
+        <button class="btn primary" id="rDone" hidden>Back to home</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSPECTOR -->
+  <section class="insp" aria-label="Network inspector">
+    <div class="card">
+      <h2>Path of a payment</h2>
+      <svg id="topo" viewBox="0 0 800 170" role="img" aria-label="Network path: phone, internet, PayFlow server, NPCI switch, payer bank and beneficiary bank">
+        <line class="lk" id="l-phone-net" x1="60" y1="85" x2="215" y2="85"/>
+        <line class="lk" x1="215" y1="85" x2="370" y2="85"/>
+        <line class="lk" x1="370" y1="85" x2="525" y2="85"/>
+        <line class="lk" x1="525" y1="85" x2="715" y2="38"/>
+        <line class="lk" x1="525" y1="85" x2="715" y2="132"/>
+
+        <g class="node" id="n-phone" transform="translate(60 85)"><rect x="-50" y="-27" width="100" height="54" rx="12"/><text y="-2">Phone</text><text class="sb" y="15">client</text></g>
+        <g class="node" id="n-net" transform="translate(215 85)"><rect x="-50" y="-27" width="100" height="54" rx="12"/><text y="-2">Internet</text><text class="sb" y="15">ISP and routers</text></g>
+        <g class="node" id="n-server" transform="translate(370 85)"><rect x="-50" y="-27" width="100" height="54" rx="12"/><text y="-2">PayFlow</text><text class="sb" y="15">server, port 443</text></g>
+        <g class="node" id="n-npci" transform="translate(525 85)"><rect x="-50" y="-27" width="100" height="54" rx="12"/><text y="-2">NPCI</text><text class="sb" y="15">UPI switch</text></g>
+        <g class="node" id="n-payer" transform="translate(715 38)"><rect x="-58" y="-27" width="116" height="54" rx="12"/><text y="-2">Payer bank</text><text class="sb" y="15">debits</text></g>
+        <g class="node" id="n-benef" transform="translate(715 132)"><rect x="-58" y="-27" width="116" height="54" rx="12"/><text y="-2">Beneficiary</text><text class="sb" y="15">bank, credits</text></g>
+
+        <g id="badge" style="display:none" transform="translate(215 28)"><rect x="-44" y="-13" width="88" height="26" rx="8"/><text y="5">attacker</text></g>
+
+        <g id="pkt" style="opacity:0;transform:translate(60px,85px)"><circle r="8"/><text y="-15" id="pktText"></text></g>
+        <g id="cross" style="opacity:0"><text y="9">✕</text></g>
+      </svg>
+    </div>
+
+    <div class="split">
+      <div class="card">
+        <div class="lhead">
+          <h2>What happens, step by step</h2>
+          <div class="ctrl">
+            <div class="seg" role="group" aria-label="Pace">
+              <button data-pace="slow" aria-pressed="false">Slow</button>
+              <button data-pace="normal" aria-pressed="true">Normal</button>
+              <button data-pace="fast" aria-pressed="false">Fast</button>
+            </div>
+            <label class="chk"><input type="checkbox" id="stepMode"> Step through</label>
+            <button id="next" disabled>Next step</button>
+          </div>
+        </div>
+        <div class="legend" aria-label="Layer colours">
+          <span class="chip c-app">App</span><span class="chip c-dns">DNS</span><span class="chip c-tls">TLS</span><span class="chip c-tcp">TCP</span><span class="chip c-ip">IP</span><span class="chip c-link">Link</span><span class="chip c-upi">UPI</span><span class="chip c-sec">Security</span>
+          <label class="chk" style="margin-left:auto"><input type="checkbox" id="skipHs"> Skip handshake after the first request</label>
+        </div>
+        <div class="logbox" id="logBox"><ol id="log" aria-live="off"></ol></div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <fieldset id="scen">
+            <legend>Demo scenario</legend>
+          </fieldset>
+          <p class="hint">Pick a scenario, then send a payment on the phone. In step-through mode press Space or the Next step button.</p>
+        </div>
+
+        <div class="card">
+          <h2>Server and bank state</h2>
+          <div class="kv first"><span>Requests received</span><b id="cReq">0</b></div>
+          <div class="kv"><span>Payments processed</span><b id="cProc">0</b></div>
+          <div class="sub2">Server database: transactions</div>
+          <table>
+            <thead><tr><th>Txn</th><th>To</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody id="dbRows"></tbody>
+          </table>
+          <div class="sub2">Bank ledgers</div>
+          <div class="kv first"><span id="lPayerN">Payer</span><b id="lPayer"></b></div>
+          <div class="kv"><span id="lPayeeN">Payee</span><b id="lPayee">–</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const hex = n => Array.from({length: n}, () => rnd(0, 15).toString(16)).join('');
+const inr = n => '₹' + Number(n).toLocaleString('en-IN');
+const inr2 = n => '₹' + Number(n).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const nowT = () => new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit'});
+
+const BANKS = {sbi:'State Bank of India', hdfcbank:'HDFC Bank', icici:'ICICI Bank', axisbank:'Axis Bank', ybl:'Yes Bank', paytm:'Paytm Payments Bank'};
+const handleOf = v => (v.split('@')[1] || '').toLowerCase();
+const bankOf = v => BANKS[handleOf(v)];
+const CH = {app:'App', dns:'DNS', tls:'TLS', tcp:'TCP', ip:'IP', link:'Link', upi:'UPI', sec:'Security'};
+const PACE = {slow:1300, normal:650, fast:200};
+const SCEN = [
+  {id:'normal',   t:'Normal payment',            d:'The happy path from tap to bank and back.',                    s:'Slides 4 to 6'},
+  {id:'drop',     t:'Network drops after paying',d:'The reply is lost. The app checks status and nothing is debited twice.', s:'Slide 9'},
+  {id:'double',   t:'Double tap',                d:'The same request arrives twice. Only one payment happens.',     s:'Slide 9'},
+  {id:'bankdown', t:'Beneficiary bank is down',  d:'The payment waits, then fails and the money is reversed.',      s:'Slide 8'},
+  {id:'tamper',   t:'Attacker tampers with data',d:'TLS detects the change and closes the connection.',             s:'Slides 7 and 9'},
+  {id:'sqli',     t:'SQL injection attempt',     d:'The firewall blocks the malicious payload.',                    s:'Slide 7'}
+];
+
+const S = {speed:'normal', step:false, skipHs:false, scenario:'normal', user:null, vpa:'', balance:25000, ledger:{}, lastPayee:'',
+  txns:[], dns:false, conn:0, token:'', req:0, proc:0, t:0, busy:false, cur:null, form:null, pin:''};
+
+/* ---------- pacing ---------- */
+let stepRes = null;
+function beat() {
+  if (S.step) { $('#next').disabled = false; return new Promise(r => { stepRes = r; }); }
+  return sleep(PACE[S.speed] * 0.6);
+}
+function advance() { if (stepRes) { const r = stepRes; stepRes = null; $('#next').disabled = true; r(); } }
+
+/* ---------- topology animation ---------- */
+const NODE = {phone:[60,85], net:[215,85], server:[370,85], npci:[525,85], payer:[715,38], benef:[715,132]};
+const ADJ = {phone:['net'], net:['phone','server'], server:['net','npci'], npci:['server','payer','benef'], payer:['npci'], benef:['npci']};
+function route(a, b) {
+  const q = [[a]], seen = new Set([a]);
+  while (q.length) {
+    const p = q.shift(), n = p[p.length - 1];
+    if (n === b) return p;
+    for (const m of ADJ[n]) if (!seen.has(m)) { seen.add(m); q.push([...p, m]); }
+  }
+  return [a];
+}
+function pulse(id) { const n = $('#n-' + id); n.classList.add('on'); setTimeout(() => n.classList.remove('on'), 650); }
+async function fly(a, b, label, opts = {}) {
+  const g = $('#pkt'), p = route(a, b);
+  const hop = Math.max(170, PACE[S.step ? 'normal' : S.speed] * 0.42);
+  $('#pktText').textContent = label || '';
+  $('#cross').style.opacity = 0;
+  g.style.transition = 'none';
+  g.style.transform = `translate(${NODE[a][0]}px,${NODE[a][1]}px)`;
+  g.style.opacity = 1;
+  g.getBoundingClientRect();
+  pulse(a);
+  for (let i = 1; i < p.length; i++) {
+    const [x, y] = NODE[p[i]], [x0, y0] = NODE[p[i-1]], last = i === p.length - 1;
+    const dies = (opts.lost === 'first' && i === 1) || (opts.lost === 'last' && last);
+    if (dies) {
+      const mx = (x0 + x) / 2, my = (y0 + y) / 2;
+      g.style.transition = `transform ${hop / 2}ms linear`;
+      g.style.transform = `translate(${mx}px,${my}px)`;
+      await sleep(hop / 2);
+      const c = $('#cross'); c.style.transform = `translate(${mx}px,${my}px)`; c.style.opacity = 1;
+      g.style.opacity = 0;
+      return false;
+    }
+    g.style.transition = `transform ${hop}ms ease-in-out`;
+    g.style.transform = `translate(${x}px,${y}px)`;
+    await sleep(hop);
+    pulse(p[i]);
+  }
+  await sleep(60);
+  g.style.opacity = 0;
+  return true;
+}
+
+/* ---------- log ---------- */
+function addRow(layer, title, detail = '', kind = '') {
+  S.t += rnd(4, 45);
+  const li = document.createElement('li');
+  li.className = 'row ' + kind;
+  const ts = S.t < 1000 ? S.t + ' ms' : (S.t / 1000).toFixed(2) + ' s';
+  li.innerHTML = `<span class="chip c-${layer}">${CH[layer]}</span><div><div class="t">${esc(title)}</div>${detail ? `<pre>${esc(detail)}</pre>` : ''}</div><time>+${ts}</time>`;
+  $('#log').appendChild(li);
+  const b = $('#logBox'); b.scrollTop = b.scrollHeight;
+}
+function sep(text) {
+  const li = document.createElement('li'); li.className = 'sep'; li.textContent = text; $('#log').appendChild(li);
+}
+async function E(layer, title, detail, mv, kind) {
+  addRow(layer, title, detail, kind);
+  if (mv) await fly(...mv);
+  await beat();
+}
+function clearLog() {
+  $('#log').innerHTML = '<li class="empty">Start a payment on the phone. Every step appears here, tagged with its network layer.</li>';
+}
+function resetViz() {
+  $('#log').innerHTML = ''; S.t = 0;
+  $('#pkt').style.opacity = 0; $('#cross').style.opacity = 0;
+  $('#badge').style.display = 'none';
+  $$('.node').forEach(n => n.classList.remove('on'));
+  setLink(true);
+}
+function setLink(up) {
+  $('#l-phone-net').classList.toggle('down', !up);
+  const n = $('#net'); n.textContent = up ? '5G' : 'No signal'; n.classList.toggle('off', !up);
+  $('#offline').classList.toggle('on', !up);
+}
+
+/* ---------- phone UI ---------- */
+function showScreen(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + id)); }
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3400); }
+function flash(el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+
+function renderHome() {
+  $('#hName').textContent = S.user.first; $('#hVpa').textContent = S.vpa; $('#hBal').textContent = inr2(S.balance);
+  renderHistory();
+}
+function renderHistory() {
+  const ul = $('#hist');
+  if (!S.txns.length) { ul.innerHTML = '<li class="empty">No payments yet. Send ₹1 or more to watch its path in the inspector.</li>'; return; }
+  ul.innerHTML = S.txns.slice(0, 6).map(t => `<li><span class="av">${esc(t.to[0].toUpperCase())}</span><div class="who"><b>${esc(t.to)}</b><small>${esc(t.remark || 'Payment')} · ${t.time}</small></div><div class="amt"><b>−${inr(t.amount)}</b><span class="pill s-${t.status}">${t.status}</span></div></li>`).join('');
+}
+const ICONS = {
+  SUCCESS: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  FAILED: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  PENDING: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  INITIATED: '<div class="spin"></div>'
+};
+function renderResult(t) {
+  if (S.cur !== t) return;
+  const st = t.status;
+  $('#rIco').className = 'ico ' + st; $('#rIco').innerHTML = ICONS[st];
+  $('#rTitle').textContent = {INITIATED:'Sending your payment', PENDING:'Payment pending', SUCCESS:'Payment successful', FAILED:'Payment failed'}[st];
+  let sub = '';
+  if (st === 'INITIATED') sub = t.note || 'Opening a secure connection.';
+  if (st === 'PENDING') sub = t.note || 'Waiting for the bank to confirm.';
+  if (st === 'SUCCESS') sub = `${inr(t.amount)} sent to ${t.to}`;
+  if (st === 'FAILED') sub = (t.reason || 'Something went wrong') + (t.refunded ? '. The debited amount was returned to your account.' : '. No money was debited.');
+  $('#rSub').textContent = sub;
+  $('#rDet').innerHTML = `<div><span>Transaction ID</span><b>${esc(t.id)}</b></div><div><span>To</span><b>${esc(t.to)}</b></div><div><span>Amount</span><b>${inr(t.amount)}</b></div><div><span>Time</span><b>${t.time}</b></div>` + (t.extra ? `<div><span>Note</span><b>${esc(t.extra)}</b></div>` : '');
+  $('#rDone').hidden = !(st === 'SUCCESS' || st === 'FAILED');
+}
+function setPhone(t, s) { t.status = s; renderHistory(); renderResult(t); }
+function setSrv(t, s) { t.srv = s; renderDB(); }
+function renderDB() {
+  const rows = S.txns.filter(t => t.inDb).slice(0, 5);
+  $('#dbRows').innerHTML = rows.length
+    ? rows.map(t => `<tr><td>…${t.id.slice(-6)}</td><td>${esc(t.to)}</td><td>${inr(t.amount)}</td><td><span class="pill s-${t.srv}">${t.srv}</span></td></tr>`).join('')
+    : '<tr><td colspan="4" class="mut">No rows yet</td></tr>';
+  $('#cReq').textContent = S.req; $('#cProc').textContent = S.proc;
+}
+function renderLedger() {
+  const p = $('#lPayer'), q = $('#lPayee');
+  const before = [p.textContent, q.textContent];
+  $('#lPayerN').textContent = 'Payer ' + (S.vpa || '');
+  p.textContent = inr2(S.balance);
+  $('#lPayeeN').textContent = S.lastPayee ? 'Payee ' + S.lastPayee : 'Payee';
+  q.textContent = S.lastPayee ? inr2(S.ledger[S.lastPayee]) : '–';
+  if (before[0] && before[0] !== p.textContent) flash(p.parentElement);
+  if (before[1] && before[1] !== q.textContent) flash(q.parentElement);
+  if ($('#s-home').classList.contains('on') || S.user) $('#hBal').textContent = inr2(S.balance);
+}
+function lockUI(b) { $$('#scen input').forEach(i => i.disabled = b); }
+
+/* ---------- connection set-up (DNS, TCP, TLS) ---------- */
+async function connect() {
+  if (S.skipHs && S.conn > 0) {
+    await E('tcp', 'Connection reused (keep-alive)', 'TCP and TLS are still open from the last request, so no new handshake is needed.');
+    return;
+  }
+  S.conn++;
+  await E('link', 'Phone sends its first frame', 'Wi-Fi or 5G carries the bits to the nearest access point or tower.\nA frame only travels one hop, using MAC addresses.', ['phone','net','frame']);
+  if (!S.dns) {
+    await E('dns', 'DNS query: A record for api.payflow.in', 'UDP to the resolver on port 53.\nA tiny one-shot question, so UDP is enough here.', ['phone','net','DNS?']);
+    await E('dns', 'DNS answer: api.payflow.in = 203.0.113.10', 'TTL 300 s. The phone caches this, so the next payment skips the lookup.', ['net','phone','IP addr']);
+    S.dns = true;
+  } else {
+    await E('dns', 'DNS cache hit: api.payflow.in = 203.0.113.10', 'The answer is still valid (TTL), so no query is sent.');
+  }
+  await E('ip', 'IP packet addressed to the server', 'src 10.12.4.27 (private address, translated by NAT)\ndst 203.0.113.10 · TTL 64 · protocol 6 (TCP)\nEach router reads dst and picks the next hop from its routing table.');
+  const cp = rnd(49152, 65000), a = rnd(100000000, 900000000), b = rnd(100000000, 900000000);
+  await E('tcp', 'Handshake 1 of 3: SYN', `phone:${cp} → server:443\nseq=${a}`, ['phone','server','SYN']);
+  await E('tcp', 'Handshake 2 of 3: SYN-ACK', `seq=${b} ack=${a + 1}`, ['server','phone','SYN-ACK']);
+  await E('tcp', 'Handshake 3 of 3: ACK', `seq=${a + 1} ack=${b + 1}\nConnection ESTABLISHED. From here TCP gives reliable, ordered delivery.`, ['phone','server','ACK'], 'good');
+  await E('tls', 'TLS ClientHello', 'Supported ciphers, key share, server name api.payflow.in', ['phone','server','Hello']);
+  await E('tls', 'Server certificate and key share', 'Certificate for api.payflow.in, signed by a trusted CA.\nBoth sides now derive the same session keys.', ['server','phone','Cert']);
+  await E('tls', 'Finished: encrypted tunnel is ready', 'TLS 1.3 · TLS_AES_256_GCM_SHA384\nEverything after this is ciphertext on the wire.', ['phone','server','Finished'], 'good');
+}
+
+/* ---------- registration ---------- */
+function makeToken(vpa) {
+  const b = s => btoa(s).replace(/=+$/, '');
+  return b('{"alg":"HS256","typ":"JWT"}') + '.' + b(JSON.stringify({sub: vpa, exp: Math.floor(Date.now() / 1000) + 900})) + '.' + hex(22);
+}
+async function register() {
+  if (S.busy) return;
+  const name = $('#rName').value.trim(), digits = $('#rMobile').value.replace(/\D/g, ''), bank = $('#rBank').value;
+  if (name.length < 2) { $('#rErr').textContent = 'Enter your full name.'; return; }
+  if (digits.length !== 10) { $('#rErr').textContent = 'Enter a 10-digit mobile number.'; return; }
+  $('#rErr').textContent = '';
+  S.busy = true; lockUI(true); $('#rBtn').disabled = true; $('#rBtn').textContent = 'Registering…';
+  resetViz(); sep('Registration and VPA linking');
+  const first = name.split(/\s+/)[0], vpa = first.toLowerCase().replace(/[^a-z0-9]/g, '') + '@' + bank;
+  try {
+    await connect();
+    await E('app', 'POST /api/v1/auth/register', `{ "name": ${JSON.stringify(name)}, "mobile": "+91${digits}", "bank": "${BANKS[bank]}" }`, ['phone','server','POST']);
+    await E('sec', 'Device binding: the server sends a one-time code by SMS', 'The SIM in this phone must send the code back.\nThat ties the account to this device.', ['server','phone','SMS OTP']);
+    const otp = String(rnd(100000, 999999));
+    toast('PayFlow code: ' + otp + '. Do not share it.');
+    await E('app', 'POST /api/v1/auth/verify', `{ "otp": "${otp}", "deviceId": "${hex(12)}" }`, ['phone','server','POST']);
+    S.token = makeToken(vpa);
+    await E('sec', 'Server issues a session token', `Authorization: Bearer ${S.token.slice(0, 24)}…\nExpires in 15 minutes, so a stolen token is only useful briefly.`, ['server','phone','Token'], 'good');
+    await E('app', 'VPA linked to the bank account', `${vpa} → ${BANKS[bank]}, account ending ${rnd(1000, 9999)}`, null, 'good');
+    S.user = {first, name}; S.vpa = vpa;
+    renderLedger(); renderHome(); showScreen('home');
+  } finally {
+    S.busy = false; lockUI(false); $('#rBtn').disabled = false; $('#rBtn').textContent = 'Register and link VPA';
+  }
+}
+
+/* ---------- payment ---------- */
+async function bankStage(txn, sc) {
+  const payer = S.vpa, to = txn.to, pb = bankOf(payer), bb = bankOf(to);
+  S.proc++; renderDB();
+  await E('upi', 'PayFlow server → NPCI: ReqPay', `txnId ${txn.id}\npayer ${payer} · payee ${to} · ${inr(txn.amount)}\nThe PIN travels as an encrypted blob that only the bank can open.`, ['server','npci','ReqPay']);
+  if (!bb) {
+    await E('upi', 'NPCI cannot find the payee', `"@${handleOf(to)}" is not a registered bank handle.`, ['npci','server','Not found'], 'bad');
+    return {status:'FAILED', reason:'Payee VPA not found'};
+  }
+  await E('upi', 'NPCI looks up both banks', `${payer} → ${pb}\n${to} → ${bb}`);
+  await E('upi', 'NPCI → payer bank: debit request', pb, ['npci','payer','Debit?']);
+  if (txn.pin !== '1234') {
+    await E('upi', 'Payer bank: the UPI PIN does not match', 'Nothing is debited. After 3 wrong tries the bank locks UPI for the day.', ['payer','npci','Declined'], 'bad');
+    await E('upi', 'NPCI → PayFlow server: RespPay FAILED', 'reason: incorrect PIN', ['npci','server','FAILED'], 'bad');
+    return {status:'FAILED', reason:'Incorrect UPI PIN'};
+  }
+  if (txn.amount > S.balance) {
+    await E('upi', 'Payer bank: balance is too low', `Needs ${inr(txn.amount)}, account has ${inr(S.balance)}.`, ['payer','npci','Declined'], 'bad');
+    await E('upi', 'NPCI → PayFlow server: RespPay FAILED', 'reason: insufficient funds', ['npci','server','FAILED'], 'bad');
+    return {status:'FAILED', reason:'Insufficient balance'};
+  }
+  S.balance -= txn.amount; renderLedger();
+  await E('upi', 'Payer bank: PIN verified, amount debited', `${pb}: ${payer} −${inr(txn.amount)}\nBalance is now ${inr(S.balance)}`, ['payer','npci','Debited']);
+  await E('upi', 'NPCI → beneficiary bank: credit request', bb, ['npci','benef','Credit?']);
+
+  if (sc === 'bankdown') {
+    await E('upi', 'The beneficiary bank does not answer', 'The credit request timed out.\nThe debit already happened, so the payment is stuck halfway.', null, 'bad');
+    await E('upi', 'NPCI → PayFlow server: RespPay PENDING', 'The outcome is unknown for now. It is not failed yet.', ['npci','server','PENDING']);
+    txn.note = 'The bank is slow to respond. Please do not pay again. We are checking.';
+    await E('app', 'Server saves PENDING and replies: 202 Accepted', `HTTP/1.1 202 Accepted\n{ "txnId": "${txn.id}", "status": "PENDING" }`, ['server','phone','202']);
+    setPhone(txn, 'PENDING');
+    await E('upi', 'NPCI re-checks the payment (try 1 of 2)', 'ReqChkTxn to the beneficiary bank', ['npci','benef','Check?'], 'bad');
+    await E('upi', 'NPCI re-checks the payment (try 2 of 2)', 'Still no answer. NPCI declares the payment FAILED.', ['npci','benef','Check?'], 'bad');
+    await E('upi', 'Auto-reversal: NPCI tells the payer bank to return the money', pb, ['npci','payer','Reverse']);
+    S.balance += txn.amount; renderLedger();
+    await E('upi', 'Payer bank: reversal complete', `${inr(txn.amount)} credited back to ${payer}\nBalance is ${inr(S.balance)} again`, ['payer','npci','Reversed'], 'good');
+    await E('upi', 'NPCI → PayFlow server: final status FAILED (refunded)', null, ['npci','server','FAILED']);
+    return {status:'FAILED', reason:'The beneficiary bank was unavailable', refunded:true, deferred:true};
+  }
+
+  S.ledger[to] += txn.amount; renderLedger();
+  await E('upi', 'Beneficiary bank: amount credited', `${bb}: ${to} +${inr(txn.amount)}`, ['benef','npci','Credited']);
+  await E('upi', 'NPCI → PayFlow server: RespPay SUCCESS', null, ['npci','server','SUCCESS'], 'good');
+  return {status:'SUCCESS'};
+}
+
+async function pollStatus(txn, out, dropped) {
+  const note = 'Exponential backoff (1 s, 2 s, 4 s) so a weak network is not flooded.\nThe app only asks for the status. It never sends the payment again.';
+  const url = `GET /api/v1/transactions/${txn.id}/status`;
+  if (dropped) {
+    S.t += 1000;
+    await E('app', 'Retry 1 after 1 s: ' + url, note, ['phone','server','GET',{lost:'first'}]);
+    await E('link', 'Still no signal, so the request is lost', 'The app waits twice as long before the next try.', null, 'bad');
+    S.t += 2000;
+    setLink(true);
+    await E('link', 'Signal is back', 'The phone reattaches to the tower.', ['phone','net','frame']);
+    await E('tcp', 'New TCP connection, then TLS session resumption', 'The old connection died with the signal.\nSYN → SYN-ACK → ACK, then TLS resumes from the earlier session ticket.', ['phone','server','SYN']);
+    await E('app', 'Retry 2 after 2 s: ' + url, note, ['phone','server','GET']);
+  } else {
+    S.t += 1000;
+    await E('app', 'The app checks the status: ' + url, note, ['phone','server','GET']);
+  }
+  await E('app', 'Server reads its database', `SELECT status FROM transactions WHERE txn_id = '${txn.id}'\n→ ${out.status}`);
+  await E('app', 'Server answers: 200 OK', `{ "txnId": "${txn.id}", "status": "${out.status}" }`, ['server','phone',out.status], out.status === 'SUCCESS' ? 'good' : '');
+  if (out.status === 'SUCCESS') {
+    await E('app', 'No double debit', `The payment was made once, the first time.\nThe retries only read the status of ${txn.id}.`, null, 'good');
+  } else if (out.refunded) {
+    await E('app', 'The app shows FAILED and tells the user the money is back', 'The reversal already happened at the bank.', null, 'good');
+  }
+}
+
+async function finish(txn, out) {
+  txn.reason = out.reason; txn.refunded = !!out.refunded;
+  if (S.scenario === 'double' && out.status === 'SUCCESS') txn.extra = 'You tapped twice. One payment was made.';
+  setPhone(txn, out.status);
+  toast(out.status === 'SUCCESS' ? `${inr(txn.amount)} sent to ${txn.to}` : 'Payment failed: ' + out.reason);
+  await E('app', 'Notification sent to the phone', 'Push message and SMS, so the user also hears about it if the app is closed.');
+}
+
+async function failEarly(txn, reason) {
+  txn.reason = reason; setPhone(txn, 'FAILED'); toast('Payment failed: ' + reason);
+}
+
+async function pay() {
+  if (S.busy || !S.form) return;
+  S.busy = true; lockUI(true);
+  const {to, amt, rm} = S.form, sc = S.scenario;
+  resetViz(); sep('Scenario: ' + SCEN.find(s => s.id === sc).t);
+  if (S.ledger[to] === undefined) S.ledger[to] = rnd(20, 300) * 100;
+  S.lastPayee = to;
+  const txn = {id:'PF' + String(Date.now()).slice(-10), to, amount:amt, remark:rm, pin:S.pin, status:'INITIATED', srv:'INITIATED', inDb:false, time:nowT(), note:'Opening a secure connection.'};
+  S.txns.unshift(txn); S.cur = txn;
+  showScreen('res'); renderResult(txn); renderHistory(); renderDB(); renderLedger();
+  try {
+    await connect();
+
+    if (sc === 'tamper') {
+      $('#badge').style.display = '';
+      txn.note = 'Sending the request.'; renderResult(txn);
+      await E('tls', 'The app wraps the request in an encrypted TLS record', 'Ciphertext plus an authentication tag (AES-256-GCM).\nThe amount is inside, unreadable to anyone on the way.', ['phone','net','record']);
+      await E('sec', 'An attacker on the network flips bits in the record', `They cannot read it, but they try to change ${inr(amt)} into something larger.`, null, 'bad');
+      await E('tls', 'The altered record reaches the server', null, ['net','server','record*']);
+      await E('tls', 'The server checks the authentication tag: no match', 'TLS alert bad_record_mac, connection closed.\nThe tampered bytes never reach the payment code, so no transaction is created.', ['server','phone','Alert'], 'bad');
+      await failEarly(txn, 'The connection was not secure');
+      return;
+    }
+
+    const payeeSent = sc === 'sqli' ? "x' OR '1'='1" : to;
+    if (sc === 'sqli') await E('sec', 'Demo: the payee field now carries a SQL payload', 'Like a malicious client that skips the app\'s format check.', null, 'bad');
+    const body = `{\n  "txnId": "${txn.id}",\n  "payer": "${S.vpa}",\n  "payee": ${JSON.stringify(payeeSent)},\n  "amount": ${amt},\n  "remark": ${JSON.stringify(rm)},\n  "pin": "<encrypted blob>"\n}`;
+    const reqText = `POST /api/v1/transactions HTTP/1.1\nHost: api.payflow.in\nAuthorization: Bearer ${S.token.slice(0, 20)}…\nIdempotency-Key: ${txn.id}\nContent-Type: application/json\n\n${body}`;
+    txn.note = 'Waiting for the server.'; renderResult(txn);
+    await E('app', 'Request sent: POST /api/v1/transactions', reqText + '\n\n(Readable here, but on the wire this is ciphertext.)', ['phone','server','POST']);
+    S.req++; renderDB();
+
+    if (sc === 'sqli') {
+      await E('sec', 'The firewall inspects the request body', `payee = ${JSON.stringify(payeeSent)}\nRule 942100 matched: SQL injection pattern.`, null, 'bad');
+      await E('app', 'Server → phone: 403 Forbidden', 'The request is dropped before it reaches the payment code.\nEven without a firewall, parameterised queries treat input as data, never as SQL.', ['server','phone','403'], 'bad');
+      await failEarly(txn, 'The request was blocked by the firewall');
+      return;
+    }
+
+    await E('sec', 'The server checks the request', 'Firewall: no attack pattern found\nToken: signature valid, expires in 14 min\nRate limit: 1 of 5 payments this minute');
+    txn.inDb = true; setSrv(txn, 'INITIATED');
+    await E('app', 'Database: INSERT transaction as INITIATED', `txn_id ${txn.id} is UNIQUE`);
+
+    if (sc === 'double') {
+      await E('app', 'Second tap: a duplicate POST arrives', `Same Idempotency-Key: ${txn.id}\nThe user tapped Pay twice, or the app retried.`, ['phone','server','POST (dup)'], 'bad');
+      S.req++; renderDB();
+      await E('sec', 'The server recognises the key and ignores the duplicate', 'The INSERT hits the UNIQUE(txn_id) rule.\nIt returns the stored record, so no second payment starts.', null, 'good');
+    }
+
+    setSrv(txn, 'PENDING'); txn.note = 'Waiting for the bank to confirm.'; setPhone(txn, 'PENDING');
+    const out = await bankStage(txn, sc);
+    if (!out.deferred) await E('app', 'Server saves the final status', `UPDATE transactions SET status = '${out.status}' WHERE txn_id = '${txn.id}'`);
+    setSrv(txn, out.status);
+
+    if (sc === 'drop' && out.status === 'SUCCESS') {
+      setLink(false);
+      await E('app', 'Server sends 200 OK with status SUCCESS', `HTTP/1.1 200 OK\n{ "txnId": "${txn.id}", "status": "SUCCESS" }`, ['server','phone','200 OK',{lost:'last'}]);
+      await E('link', 'The signal drops, so the reply never arrives', 'Think of a lift, a tunnel or a weak area.', null, 'bad');
+      await E('tcp', 'The phone waits: no data, no ACK', 'The timeout is reached. The app must not assume failure, because the server has already paid.', null, 'bad');
+      txn.note = 'No answer from the server. Your money is safe. We are checking, so please do not pay again.';
+      setPhone(txn, 'PENDING');
+      await pollStatus(txn, out, true);
+      await finish(txn, out);
+    } else if (out.deferred) {
+      await pollStatus(txn, out, false);
+      await finish(txn, out);
+    } else {
+      await E('app', 'Server → phone: ' + (out.status === 'SUCCESS' ? '200 OK' : '200 OK (declined)'), `HTTP/1.1 200 OK\n{ "txnId": "${txn.id}", "status": "${out.status}"${out.reason ? `, "reason": "${out.reason}"` : ''} }`, ['server','phone',out.status], out.status === 'SUCCESS' ? 'good' : 'bad');
+      await finish(txn, out);
+    }
+  } finally {
+    S.busy = false; lockUI(false); setLink(true);
+    if (S.cur) renderResult(S.cur);
+  }
+}
+
+/* ---------- screens wiring ---------- */
+function buildKeys() {
+  const k = $('#keys');
+  ['1','2','3','4','5','6','7','8','9','⌫','0',''].forEach(v => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = v;
+    if (!v) { b.style.visibility = 'hidden'; b.tabIndex = -1; }
+    b.setAttribute('aria-label', v === '⌫' ? 'Delete' : v || 'blank');
+    b.addEventListener('click', () => key(v));
+    k.appendChild(b);
+  });
+}
+function drawDots() { $$('#dots i').forEach((d, i) => d.classList.toggle('f', i < S.pin.length)); }
+function key(v) {
+  if (S.busy) return;
+  if (v === '⌫') S.pin = S.pin.slice(0, -1);
+  else if (v && S.pin.length < 4) S.pin += v;
+  drawDots();
+  if (S.pin.length === 4) setTimeout(pay, 250);
+}
+
+function goSend() { $('#sErr').textContent = ''; showScreen('send'); }
+function sendContinue() {
+  const to = $('#sTo').value.trim(), amt = Number($('#sAmt').value), rm = $('#sRm').value.trim();
+  let err = '';
+  if (!/^[a-zA-Z0-9._-]{2,}@[a-zA-Z]{2,}$/.test(to)) err = 'Enter a VPA like name@bank.';
+  else if (to.toLowerCase() === S.vpa) err = 'You cannot pay your own VPA.';
+  else if (!Number.isInteger(amt) || amt < 1) err = 'Enter a whole amount of ₹1 or more.';
+  else if (amt > 100000) err = 'UPI allows up to ₹1,00,000 per payment.';
+  $('#sErr').textContent = err;
+  if (err) return;
+  S.form = {to, amt, rm}; S.pin = ''; drawDots();
+  $('#pFor').textContent = `Paying ${inr(amt)} to ${to}`;
+  showScreen('pin');
+}
+
+function buildScenarios() {
+  $('#scen').insertAdjacentHTML('beforeend', SCEN.map(s => `<label class="sc"><input type="radio" name="scn" value="${s.id}"${s.id === 'normal' ? ' checked' : ''}><div><b>${s.t}</b><span>${s.d}</span><em>${s.s}</em></div></label>`).join(''));
+  $$('#scen input').forEach(i => i.addEventListener('change', () => { S.scenario = i.value; }));
+}
+
+function resetDemo() {
+  advance();
+  Object.assign(S, {user:null, vpa:'', balance:25000, ledger:{}, lastPayee:'', txns:[], dns:false, conn:0, token:'', req:0, proc:0, t:0, busy:false, cur:null, form:null, pin:''});
+  resetViz(); clearLog(); renderDB(); renderLedger(); lockUI(false);
+  $('#rBtn').disabled = false; $('#rBtn').textContent = 'Register and link VPA'; $('#rErr').textContent = '';
+  showScreen('reg');
+}
+
+function init() {
+  buildKeys(); buildScenarios(); clearLog(); renderDB();
+  $('#rBtn').addEventListener('click', register);
+  $('#skipReg').addEventListener('click', () => {
+    if (S.busy) return;
+    S.user = {first:'Arpit', name:'Arpit Kumar Jena'}; S.vpa = 'arpit@sbi'; S.token = makeToken(S.vpa);
+    renderLedger(); renderHome(); showScreen('home');
+  });
+  $('#goSend').addEventListener('click', goSend);
+  $('#sBack').addEventListener('click', () => showScreen('home'));
+  $('#pBack').addEventListener('click', () => { if (!S.busy) showScreen('send'); });
+  $('#sGo').addEventListener('click', sendContinue);
+  $('#rDone').addEventListener('click', () => { renderHome(); showScreen('home'); });
+  $('#reset').addEventListener('click', resetDemo);
+  $$('[data-pace]').forEach(b => b.addEventListener('click', () => {
+    S.speed = b.dataset.pace; $$('[data-pace]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+  $('#stepMode').addEventListener('change', e => { S.step = e.target.checked; if (!S.step) advance(); });
+  $('#skipHs').addEventListener('change', e => { S.skipHs = e.target.checked; });
+  $('#next').addEventListener('click', advance);
+  document.addEventListener('keydown', e => {
+    if ((e.code === 'Space' || e.code === 'ArrowRight') && S.step && stepRes) {
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) && document.activeElement.type !== 'radio' && document.activeElement.type !== 'checkbox') return;
+      e.preventDefault(); advance();
+    }
+  });
+  const tick = () => { $('#clock').textContent = new Date().toLocaleTimeString('en-IN', {hour:'numeric', minute:'2-digit', hour12:false}); };
+  tick(); setInterval(tick, 30000);
+}
+init();
+})();
+</script>
+</body>
+</html>
